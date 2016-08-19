@@ -2,7 +2,7 @@ import webapp2
 import cgi
 import jinja2
 import os
-
+from google.appengine.ext import db
 
 # set up jinja
 template_dir = os.path.join(os.path.dirname(__file__), "templates")
@@ -19,12 +19,23 @@ terrible_movies = [
     "Nine Lives"
 ]
 
+# TODO
+# create a Movie class
+class Movie(db.Model):
+    title = db.StringProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+
 
 def getCurrentWatchlist():
     """ Returns the user's current watchlist """
 
     # for now, we are just pretending
-    return [ "Star Wars", "Minions", "Freaky Friday", "My Favorite Martian" ]
+    return [
+        Movie(title="Star Wars"),
+        Movie(title="Minions"),
+        Movie(title="Freaky Friday"),
+        Movie(title="My Favorite Martian")
+    ]
 
 
 class Index(webapp2.RequestHandler):
@@ -33,13 +44,17 @@ class Index(webapp2.RequestHandler):
     """
 
     def get(self):
+        t_watchlist = jinja_env.get_template("watchlist.html")
+        watchlist_content = t_watchlist.render(
+                        watchlist = getCurrentWatchlist(),
+                        error = self.request.get("error"))
         t_edit = jinja_env.get_template("edit.html")
         edit_content = t_edit.render(
                         watchlist = getCurrentWatchlist(),
                         error = self.request.get("error"))
         response = t_scaffolding.render(
-                    title = "FlickList: Edit My Watchlist",
-                    content = edit_content)
+                    title = "FlickList: My Watchlist",
+                    content = watchlist_content + edit_content)
         self.response.write(response)
 
 
@@ -70,7 +85,7 @@ class AddMovie(webapp2.RequestHandler):
         response = t_scaffolding.render(
                         title = "FlickList: Add a Movie",
                         content = add_content)
-        self.response.write("Under construction...")
+        self.response.write(response)
 
 
 class CrossOffMovie(webapp2.RequestHandler):
@@ -88,7 +103,8 @@ class CrossOffMovie(webapp2.RequestHandler):
             self.redirect("/?error=", cgi.escape(error))
 
         # if user tried to cross off a movie that is not in their list, reject
-        if not (crossed_off_movie in getCurrentWatchlist()):
+        movie_obj = Movie(title = crossed_off_movie)
+        if not (movie_obj in getCurrentWatchlist()):
             # make a helpful error message
             error = "'{0}' is not in your Watchlist, so you can't cross it off!".format(crossed_off_movie)
             error_escaped = cgi.escape(error, quote=True)
@@ -110,3 +126,9 @@ app = webapp2.WSGIApplication([
     ('/add', AddMovie),
     ('/cross-off', CrossOffMovie)
 ], debug=True)
+
+
+# create watchlist view
+    # create watchlist template, render it in Index
+
+# create Movie class
