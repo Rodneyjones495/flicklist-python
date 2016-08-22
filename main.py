@@ -28,14 +28,8 @@ class Movie(db.Model):
 
 def getCurrentWatchlist():
     """ Returns the user's current watchlist """
-
-    return [
-        # now let's use Movie objects instead of just strings
-        Movie(title="Star Wars"),
-        Movie(title="Minions"),
-        Movie(title="Freaky Friday"),
-        Movie(title="My Favorite Martian")
-    ]
+    # actually query the database
+    return db.GqlQuery("SELECT * from Movie")
 
 
 class Index(webapp2.RequestHandler):
@@ -80,6 +74,10 @@ class AddMovie(webapp2.RequestHandler):
         # 'escape' the user's input so that if they typed HTML, it doesn't mess up our site
         new_movie_escaped = cgi.escape(new_movie, quote = True)
 
+        # add the new movie to the database
+        movie_obj = Movie(title = new_movie_escaped)
+        movie_obj.put()
+
         # render the confirmation message
         t_add = jinja_env.get_template("add.html")
         add_content = t_add.render(movie = new_movie_escaped)
@@ -95,30 +93,33 @@ class CrossOffMovie(webapp2.RequestHandler):
     """
 
     def post(self):
-        crossed_off_movie = self.request.get("crossed-off-movie")
+        crossed_off_movie_title = self.request.get("crossed-off-movie")
 
         # if the movie movie is just whitespace (or nonexistant), reject.
         # (we didn't check for this last time--only checked in the AddMovie handler--but we probably should have!)
-        if not crossed_off_movie or crossed_off_movie.strip() == "":
+        if not crossed_off_movie_title or crossed_off_movie_title.strip() == "":
             error = "Please specify a movie to cross off."
             self.redirect("/?error=", cgi.escape(error))
 
         # if user tried to cross off a movie that is not in their list, reject
         watchlist_movies_with_same_title = [
-            movie for movie in getCurrentWatchlist() if movie.title == crossed_off_movie
+            movie for movie in getCurrentWatchlist() if movie.title == crossed_off_movie_title
         ]
         if len(watchlist_movies_with_same_title) == 0:
             # make a helpful error message
-            error = "'{0}' is not in your Watchlist, ".format(crossed_off_movie)
+            error = "'{0}' is not in your Watchlist, ".format(crossed_off_movie_title)
             error += "so you can't cross it off!"
             error_escaped = cgi.escape(error, quote=True)
 
             # redirect to homepage, and include error as a query parameter in the URL
             self.redirect("/?error=" + error_escaped)
 
+        # delete the movie from the database
+        db.delete(watchlist_movies_with_same_title[0])
+
         # render confirmation page
         t_cross_off = jinja_env.get_template("cross-off.html")
-        cross_off_content = t_cross_off.render(movie=crossed_off_movie)
+        cross_off_content = t_cross_off.render(movie=crossed_off_movie_title)
         response = t_scaffolding.render(
                     title = "FlickList: Cross a Movie Off",
                     content = cross_off_content)
