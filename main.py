@@ -19,7 +19,7 @@ terrible_movies = [
     "Nine Lives"
 ]
 
-# TODO
+
 # create a Movie class
 class Movie(db.Model):
     title = db.StringProperty(required = True)
@@ -31,6 +31,7 @@ def getCurrentWatchlist():
 
     # for now, we are just pretending
     return [
+        # use Movie objects instead of just strings
         Movie(title="Star Wars"),
         Movie(title="Minions"),
         Movie(title="Freaky Friday"),
@@ -44,6 +45,7 @@ class Index(webapp2.RequestHandler):
     """
 
     def get(self):
+        # add watchlist content to the response
         t_watchlist = jinja_env.get_template("watchlist.html")
         watchlist_content = t_watchlist.render(
                         watchlist = getCurrentWatchlist(),
@@ -74,10 +76,10 @@ class AddMovie(webapp2.RequestHandler):
         # if the user wants to add a terrible movie, redirect and yell at them
         if new_movie in terrible_movies:
             error = "Trust me, you don't want to add '{0}' to your Watchlist.".format(new_movie)
-            self.redirect("/?error=" + cgi.escape(error, quote=True))
+            self.redirect("/?error=" + cgi.escape(error, quote = True))
 
         # 'escape' the user's input so that if they typed HTML, it doesn't mess up our site
-        new_movie_escaped = cgi.escape(new_movie, quote=True)
+        new_movie_escaped = cgi.escape(new_movie, quote = True)
 
         # render the confirmation message
         t_add = jinja_env.get_template("add.html")
@@ -103,10 +105,13 @@ class CrossOffMovie(webapp2.RequestHandler):
             self.redirect("/?error=", cgi.escape(error))
 
         # if user tried to cross off a movie that is not in their list, reject
-        movie_obj = Movie(title = crossed_off_movie)
-        if not (movie_obj in getCurrentWatchlist()):
+        watchlist_movies_with_same_title = [
+            movie for movie in getCurrentWatchlist() if movie.title == crossed_off_movie
+        ]
+        if len(watchlist_movies_with_same_title) == 0:
             # make a helpful error message
-            error = "'{0}' is not in your Watchlist, so you can't cross it off!".format(crossed_off_movie)
+            error = "'{0}' is not in your Watchlist, ".format(crossed_off_movie)
+            error += "so you can't cross it off!"
             error_escaped = cgi.escape(error, quote=True)
 
             # redirect to homepage, and include error as a query parameter in the URL
@@ -132,3 +137,5 @@ app = webapp2.WSGIApplication([
     # create watchlist template, render it in Index
 
 # create Movie class
+    # fix templates to use movie.title
+    # fix cross-off validation (can't compare string to object, look at movie.title property)
