@@ -29,9 +29,8 @@ class Movie(db.Model):
 def getCurrentWatchlist():
     """ Returns the user's current watchlist """
 
-    # for now, we are just pretending
     return [
-        # use Movie objects instead of just strings
+        # now let's use Movie objects instead of just strings
         Movie(title="Star Wars"),
         Movie(title="Minions"),
         Movie(title="Freaky Friday"),
