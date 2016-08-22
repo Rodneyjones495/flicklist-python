@@ -12,7 +12,7 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))
 t_scaffolding = jinja_env.get_template("scaffolding.html")
 
 # a list of movies that nobody should be allowed to watch
-terrible_movies = [
+terrible_movie_titles = [
     "Gigli",
     "Star Wars Episode 1: Attack of the Clones",
     "Paul Blart: Mall Cop 2",
@@ -73,7 +73,7 @@ class AddMovie(webapp2.RequestHandler):
             self.redirect("/?error=" + cgi.escape(error))
 
         # if the user wants to add a terrible movie, redirect and yell at them
-        if new_movie in terrible_movies:
+        if new_movie in terrible_movie_titles:
             error = "Trust me, you don't want to add '{0}' to your Watchlist.".format(new_movie)
             self.redirect("/?error=" + cgi.escape(error, quote = True))
 
