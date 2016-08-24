@@ -1,0 +1,18 @@
+<h2>How was {{ movie.title }}?</h2>
+
+<form action="/ratings/{{ movie.key().id() }}" method="post">
+    <label>
+        I give it
+        <select name="rating" value="{{ movie.rating }}">
+            <option value="None">select a rating</option>
+            <option value="1">*</option>
+            <option value="2">**</option>
+            <option value="3">***</option>
+            <option value="4">****</option>
+            <option value="5">*****</option>
+        </select>
+        stars.
+    </label>
+
+    <input type="submit" value="Rate it!"/>
+</form>

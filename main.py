@@ -8,7 +8,7 @@ from google.appengine.ext import db
 template_dir = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))
 
-# load some templates
+# we'll use this template in a few different places
 t_scaffolding = jinja_env.get_template("scaffolding.html")
 
 # a list of movies that nobody should be allowed to watch
@@ -19,17 +19,12 @@ terrible_movie_titles = [
     "Nine Lives"
 ]
 
-
 # create a Movie class
 class Movie(db.Model):
     title = db.StringProperty(required = True)
+    watched = db.BooleanProperty(required = True, default = False)
+    rating = db.StringProperty()
     created = db.DateTimeProperty(auto_now_add = True)
-
-
-def getCurrentWatchlist():
-    """ Returns the user's current watchlist """
-    # actually query the database
-    return db.GqlQuery("SELECT * from Movie")
 
 
 class Index(webapp2.RequestHandler):
@@ -38,18 +33,16 @@ class Index(webapp2.RequestHandler):
     """
 
     def get(self):
-        # add watchlist content to the response
-        t_watchlist = jinja_env.get_template("watchlist.html")
-        watchlist_content = t_watchlist.render(
-                        watchlist = getCurrentWatchlist(),
-                        error = self.request.get("error"))
-        t_edit = jinja_env.get_template("edit.html")
-        edit_content = t_edit.render(
-                        watchlist = getCurrentWatchlist(),
-                        error = self.request.get("error"))
+        unwatched_movies = db.GqlQuery("SELECT * FROM Movie WHERE watched = False")
+
+        t_frontpage = jinja_env.get_template("frontpage.html")
+        frontpage_content = t_frontpage.render(
+                                movies = unwatched_movies,
+                                error = self.request.get("error"))
+
         response = t_scaffolding.render(
                     title = "FlickList: My Watchlist",
-                    content = watchlist_content + edit_content)
+                    content = frontpage_content)
         self.response.write(response)
 
 
@@ -60,80 +53,106 @@ class AddMovie(webapp2.RequestHandler):
 
     def post(self):
         new_movie = self.request.get("new-movie")
+        print("the new movie is " + new_movie)
 
         # if the user typed nothing at all, redirect and yell at them
         if (not new_movie) or (new_movie.strip() == ""):
+            print("We caught the error")
             error = "Please specify the movie you want to add."
             self.redirect("/?error=" + cgi.escape(error))
+            return
 
         # if the user wants to add a terrible movie, redirect and yell at them
         if new_movie in terrible_movie_titles:
             error = "Trust me, you don't want to add '{0}' to your Watchlist.".format(new_movie)
             self.redirect("/?error=" + cgi.escape(error, quote = True))
+            return
 
         # 'escape' the user's input so that if they typed HTML, it doesn't mess up our site
         new_movie_escaped = cgi.escape(new_movie, quote = True)
 
         # add the new movie to the database
-        movie_obj = Movie(title = new_movie_escaped)
+        movie_obj = Movie(title = new_movie_escaped, watched = False)
         movie_obj.put()
 
-        # render the confirmation message
-        t_add = jinja_env.get_template("add.html")
-        add_content = t_add.render(movie = new_movie_escaped)
-        response = t_scaffolding.render(
-                        title = "FlickList: Add a Movie",
-                        content = add_content)
-        self.response.write(response)
+        # redirect back to homepage
+        self.redirect("/")
 
 
-class CrossOffMovie(webapp2.RequestHandler):
-    """ Handles requests coming in to '/cross-off'
-        e.g. www.flicklist.com/cross-off
+class WatchedMovie(webapp2.RequestHandler):
+    """ Handles requests coming in to '/watched-it'
+        e.g. www.flicklist.com/watched-it
     """
 
     def post(self):
-        crossed_off_movie_title = self.request.get("crossed-off-movie")
+        movie_id = self.request.get("movie")
 
-        # if the movie movie is just whitespace (or nonexistant), reject.
-        # (we didn't check for this last time--only checked in the AddMovie handler--but we probably should have!)
-        if not crossed_off_movie_title or crossed_off_movie_title.strip() == "":
-            error = "Please specify a movie to cross off."
+        # if the movie id is nonexistant, reject.
+        if not movie_id:
+            error = "Please specify a movie to watch."
             self.redirect("/?error=", cgi.escape(error))
+            return
+
+        # get the movie with the matching id
+        movie = Movie.get_by_id(int(movie_id))
 
         # if user tried to cross off a movie that is not in their list, reject
-        watchlist_movies_with_same_title = [
-            movie for movie in getCurrentWatchlist() if movie.title == crossed_off_movie_title
-        ]
-        if len(watchlist_movies_with_same_title) == 0:
-            # make a helpful error message
-            error = "'{0}' is not in your Watchlist, ".format(crossed_off_movie_title)
-            error += "so you can't cross it off!"
-            error_escaped = cgi.escape(error, quote=True)
+        if movie == None:
+            error_escaped = cgi.escape("Invalid movie to watch " + movie_id, quote=True)
 
             # redirect to homepage, and include error as a query parameter in the URL
             self.redirect("/?error=" + error_escaped)
+            return
 
-        # delete the movie from the database
-        db.delete(watchlist_movies_with_same_title[0])
+        # set `watched` to True and save to the database
+        movie.watched = True
+        movie.put()
 
-        # render confirmation page
-        t_cross_off = jinja_env.get_template("cross-off.html")
-        cross_off_content = t_cross_off.render(movie=crossed_off_movie_title)
-        response = t_scaffolding.render(
-                    title = "FlickList: Cross a Movie Off",
-                    content = cross_off_content)
+        # redirect to the ratings page
+        self.redirect("/ratings")
+
+
+class MovieRatings(webapp2.RequestHandler):
+    """ Handles requests coming in to '/ratings'
+        e.g. www.flicklist.com/ratings
+    """
+
+    def get(self):
+        # get all the movies that the user has watched
+        watched_movies = db.GqlQuery("SELECT * FROM Movie WHERE watched = True ORDER BY created desc")
+
+        t_ratings = jinja_env.get_template("ratings.html")
+        ratings_content = t_ratings.render(movies = watched_movies)
+        response = t_scaffolding.render(content = ratings_content)
         self.response.write(response)
+
+    def post(self):
+        # get the movie
+        movie_id = self.request.get("movie-id")
+        movie = Movie.get_by_id( int(movie_id) )
+
+        # get the rating
+        new_rating = self.request.get("rating")
+
+        # if they both exist, update the movie's rating
+        if movie and new_rating:
+            movie.rating = new_rating
+            print ("attempted rating is " + new_rating)
+            print("new rating is " + movie.rating)
+            movie.put()
+
+        self.redirect("/ratings")
 
 
 app = webapp2.WSGIApplication([
     ('/', Index),
+    ('/ratings', MovieRatings),
     ('/add', AddMovie),
-    ('/cross-off', CrossOffMovie)
+    ('/watched-it', WatchedMovie),
 ], debug=True)
 
 
-# create watchlist view
+# create unwatched view
     # create watchlist template, render it in Index
 
 # create Movie class

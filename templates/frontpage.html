@@ -1,0 +1,24 @@
+<h2>Movies I Want to Watch:</h2>
+
+<ul>
+    {% for movie in movies %}
+    <li>
+        <form action="/watched-it" method="post">
+            {{ movie.title }}
+            <input type="hidden" name="movie" value="{{ movie.key().id() }}"/>
+            <input type="submit" value="I Watched it!"/>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+
+<form action="/add" method="post">
+    <label>
+        I want to add
+        <input type="text" name="new-movie"/>
+        to my watchlist.
+    </label>
+    <input type="submit" value="Add It"/>
+</form>
+
+<p class="error">{{ error if error else "" }}</p>
