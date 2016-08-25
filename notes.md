@@ -51,3 +51,37 @@ Implement the feature where users can rate the movies the have watched
 2. Handle form submission so that it renders the template 
 3. Add the forms, one on each list item in the `ratings.html` template
 
+
+## Class 9
+
+### Intro Text
+
+> Today we will build persistance into our app. Finally, our hypothetical user will be able to add a new movie to the list, close the window and go eat a sandwich, forget what movie she wanted to watch, and then come running back to our site, and the same movie will still be faithfully sitting in her list so she can go stream it on our other awesome website, FlixNet.
+
+### Before Walkthrough 9
+
+These changes will already be in place. Briefly explain them:
+
+- base Handler class
+  - all our `RequestHandler` classes now inherit from a base class called `Handler`. We have dropped one method in there, `renderError`. This is nice because any of the subclasses can now use that method. And in the future we might add more methods here.
+
+### During Walkthrough 9
+
+- import the `db` class (or sub-module?) from the `google.appengine.ext` module
+- create `Movie` object
+  - with `db` properties `title`, `watched`, `rating` and `created`
+- on `AddMovie` handler, create a movie object, and use `put` ORM method to save it to the datastore
+  - then go to the admin panel and observe that it was indeed saved 
+- On `Index` handler, don't use `getUnwatchedMovies()` function. Instead use a GqlQuery on the database
+  - Result should be one item in the list, but with no title. Why not? Gotta go to the `frontpage.html` template and adjust to use `movie.title` instead of just `movie`.
+- Implement persistant "watching"
+  - In the `WatchedMovie` handler, update `.movie.watched` property to `True`
+  - On the `frontpage.html` template, use `movie.key().id()` as the value for each hidden input
+- Implement persistant "rating"
+  - In `ratings.html` template, the hidden input should once again use`movie.key().id()`, and for the `<option`, use this line: 
+    
+    ```html
+    <option {{ "selected" if rating == movie.rating else "" }}>` 
+    ```
+  - in `MovieRatings.get` make a GQL query to select all the movies that have been watched, sorted by creation date (most recent first).
+  - in `MovieRatings.post`, use `Movie.get_by_id` to find the movie with the id specified by the form submission, and update its rating to the new rating
