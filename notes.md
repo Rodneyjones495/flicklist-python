@@ -77,11 +77,13 @@ These changes will already be in place. Briefly explain them:
 - Implement persistant "watching"
   - In the `WatchedMovie` handler, update `.movie.watched` property to `True`
   - On the `frontpage.html` template, use `movie.key().id()` as the value for each hidden input
-- Implement persistant "rating"
-  - In `ratings.html` template, the hidden input should once again use`movie.key().id()`, and for the `<option`, use this line: 
-    
-    ```html
-    <option {{ "selected" if rating == movie.rating else "" }}>` 
-    ```
-  - in `MovieRatings.get` make a GQL query to select all the movies that have been watched, sorted by creation date (most recent first).
-  - in `MovieRatings.post`, use `Movie.get_by_id` to find the movie with the id specified by the form submission, and update its rating to the new rating
+
+### During Studio 9
+
+Implement persistant "rating"
+
+1. In `MovieRatings.get` make a GQL query to select all the movies that have been watched, 
+  - Extra credit: sort by creation date (most recent first).
+2. In `MovieRatings.post`, use the `Movie.get_by_id` ORM method to find the movie with the id specified by the form submission.
+3. In `MovieRatings.post`, update the movie's rating to the new rating specified by the form submission.
+4 In `rating-confirmation.html`, update the code so that it still works now that it is being given a movie *object*.
