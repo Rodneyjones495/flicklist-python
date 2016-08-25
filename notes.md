@@ -2,7 +2,7 @@
 
 ## Class 8
 
-### Intro Text (gist)
+### Intro Text
 
 Something like this:
 
